@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>סימולטור תמחור, גמישות ביקוש ונקודת איזון</title>
+    <!-- טעינת גופן עברי מודרני וקריא (Heebo & Assistant) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Heebo:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <!-- טעינת Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Heebo', 'Assistant', 'sans-serif'],
+                    },
+                    colors: {
+                        navy: {
+                            800: '#1e3a8a',
+                            900: '#0f172a',
+                            950: '#090d16',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* עיצוב מותאם אישית לסליידרים (מחוונים) עבור חוויית משתמש חלקה */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 999px;
+            transition: background 0.2s;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 22px;
+            width: 22px;
+            border-radius: 50%;
+            background: #1e3a8a;
+            border: 3px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.35);
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -7px;
+            transition: transform 0.15s ease, background-color 0.15s ease;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.12);
+            background: #2563eb;
+        }
+        input[type=range]::-moz-range-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 999px;
+        }
+        input[type=range]::-moz-range-thumb {
+            height: 22px;
+            width: 22px;
+            border-radius: 50%;
+            background: #1e3a8a;
+            border: 3px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.35);
+            cursor: pointer;
+            transition: transform 0.15s ease, background-color 0.15s ease;
+        }
+        /* התאמת כיווניות טולטיפ של הגרף */
+        .chart-tooltip {
+            pointer-events: none;
+            transition: opacity 0.15s ease, transform 0.1s ease;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col justify-between selection:bg-blue-900 selection:text-white">
+
+    <!-- חלק עליון: כותרת והסבר פדגוגי -->
+    <header class="bg-slate-900 text-white shadow-md border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2.5 mb-1.5">
+                        <span class="inline-flex items-center justify-center p-2 bg-blue-800/60 rounded-lg text-blue-300 border border-blue-700/50">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                        </span>
+                        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+                            סימולטור תמחור, גמישות ביקוש ונקודת איזון
+                        </h1>
+                    </div>
+                    <!-- הסבר פדגוגי קצר (עד 3 שורות) -->
+                    <p class="text-slate-300 text-sm sm:text-base max-w-4xl leading-relaxed">
+                        קביעת מחיר המוצר משפיעה ישירות על שולי הרווח ליחידה (התרומה), אך במקביל משנה את כמות היחידות שהצרכנים ירכשו בשוק (גמישות הביקוש). 
+                        שחקו עם מחיר המכירה והעלויות כדי לגלות כיצד המתח שבין <strong>מחיר גבוה</strong> ל<strong>היקף מכירות גדול</strong> קובע מתי העסק מכסה את הוצאותיו ועובר מהפסד לרווח.
+                    </p>
+                </div>
+                <div class="shrink-0">
+                    <button id="resetBtn" type="button" class="w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-950 text-slate-200 font-medium text-sm rounded-xl border border-slate-700 shadow-sm transition-all duration-150 cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        איפוס נתונים
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- תוכן מרכזי: לוח בקרה מימין ואזור תצוגה ויזואלי משמאל -->
+    <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- צד ימין (4 עמודות בדסקטופ): לוח בקרה עם 3 סליידרים -->
+            <section aria-label="לוח בקרת פרמטרים" class="lg:col-span-4 bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 flex flex-col gap-6">
+                <div class="border-b border-slate-100 pb-4 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">לוח בקרה ותמחור</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">הזיזו את המחוונים לבחינת תרחישים עסקיים</p>
+                    </div>
+                    <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-900 border border-blue-100">
+                        קלט משתנים
+                    </span>
+                </div>
+
+                <!-- סליידר 1: מחיר מכירה ליחידה -->
+                <div class="space-y-2.5 bg-slate-50/70 p-4 rounded-xl border border-slate-200/60">
+                    <div class="flex justify-between items-center">
+                        <label for="priceSlider" class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-800 inline-block"></span>
+                            מחיר מכירה ליחידה (P)
+                        </label>
+                        <span id="priceValue" class="text-base font-extrabold text-blue-900 bg-white px-3 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                            150 ₪
+                        </span>
+                    </div>
+                    <input type="range" id="priceSlider" min="50" max="300" step="5" value="150" aria-label="מחיר מכירה ליחידה">
+                    <div class="flex justify-between text-xs text-slate-400 font-medium px-0.5">
+                        <span>50 ₪</span>
+                        <span>175 ₪</span>
+                        <span>300 ₪</span>
+                    </div>
+                    <!-- חיווי גמישות ביקוש נגזר -->
+                    <div class="pt-2 border-t border-slate-200/70 flex items-center justify-between text-xs">
+                        <span class="text-slate-500">ביקוש חודשי מוערך בשוק:</span>
+                        <span id="demandBadge" class="font-bold text-slate-700 bg-slate-200/70 px-2 py-0.5 rounded-md">
+                            900 יח'
+                        </span>
+                    </div>
+                </div>
+
+                <!-- סליידר 2: עלות משתנה ליחידה -->
+                <div class="space-y-2.5 bg-slate-50/70 p-4 rounded-xl border border-slate-200/60">
+                    <div class="flex justify-between items-center">
+                        <label for="varCostSlider" class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-slate-600 inline-block"></span>
+                            עלות משתנה ליחידה (VC)
+                        </label>
+                        <span id="varCostValue" class="text-base font-extrabold text-slate-800 bg-white px-3 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                            70 ₪
+                        </span>
+                    </div>
+                    <input type="range" id="varCostSlider" min="20" max="150" step="5" value="70" aria-label="עלות משתנה ליחידה">
+                    <div class="flex justify-between text-xs text-slate-400 font-medium px-0.5">
+                        <span>20 ₪</span>
+                        <span>85 ₪</span>
+                        <span>150 ₪</span>
+                    </div>
+                    <!-- חיווי תרומה שולית ליחידה -->
+                    <div class="pt-2 border-t border-slate-200/70 flex items-center justify-between text-xs">
+                        <span class="text-slate-500">תרומה שולית ליחידה (P - VC):</span>
+                        <span id="contributionBadge" class="font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                            80 ₪
+                        </span>
+                    </div>
+                </div>
+
+                <!-- סליידר 3: הוצאות קבועות חודשיות -->
+                <div class="space-y-2.5 bg-slate-50/70 p-4 rounded-xl border border-slate-200/60">
+                    <div class="flex justify-between items-center">
+                        <label for="fixedCostSlider" class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block"></span>
+                            הוצאות קבועות חודשיות (FC)
+                        </label>
+                        <span id="fixedCostValue" class="text-base font-extrabold text-slate-800 bg-white px-3 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                            40,000 ₪
+                        </span>
+                    </div>
+                    <input type="range" id="fixedCostSlider" min="10000" max="100000" step="2000" value="40000" aria-label="הוצאות קבועות חודשיות">
+                    <div class="flex justify-between text-xs text-slate-400 font-medium px-0.5">
+                        <span>10,000 ₪</span>
+                        <span>55,000 ₪</span>
+                        <span>100,000 ₪</span>
+                    </div>
+                </div>
+
+                <!-- הסבר קצר על מודל הביקוש -->
+                <div class="text-xs text-slate-500 bg-blue-50/50 border border-blue-100 rounded-xl p-3.5 leading-relaxed">
+                    <strong class="text-blue-950 block mb-0.5">הנחת עקומת הביקוש בסימולטור:</strong>
+                    בהתאם לחוק הביקוש, ככל שהמחיר עולה הכמות המבוקשת יורדת (<span dir="ltr" class="font-mono text-slate-700">Q = 1,500 - 4×P</span>). התבוננו כיצד הרווח הצפוי מושפע מהאיזון שבין המחיר לכמות.
+                </div>
+            </section>
+
+            <!-- צד שמאל (8 עמודות בדסקטופ): כרטיסי מדדים + גרף ויזואלי -->
+            <section aria-label="תוצאות וניתוח גרפי" class="lg:col-span-8 flex flex-col gap-6">
+                
+                <!-- 3 כרטיסי מדדים מספריים המתעדכנים בזמן אמת -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    
+                    <!-- כרטיס 1: נקודת איזון (ביחידות) -->
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wider text-slate-500">נקודת איזון (ביחידות)</p>
+                                <h3 id="bepUnitsCard" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1.5">
+                                    500 יח'
+                                </h3>
+                            </div>
+                            <div class="p-2.5 bg-blue-50 text-blue-900 rounded-xl border border-blue-100 shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                            </div>
+                        </div>
+                        <p id="bepUnitsSub" class="text-xs text-slate-500 mt-3 pt-2.5 border-t border-slate-100">
+                            הכמות המינימלית לכיסוי כל ההוצאות
+                        </p>
+                    </div>
+
+                    <!-- כרטיס 2: פדיון נדרש לאיזון -->
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wider text-slate-500">פדיון נדרש לאיזון</p>
+                                <h3 id="bepRevenueCard" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1.5">
+                                    75,000 ₪
+                                </h3>
+                            </div>
+                            <div class="p-2.5 bg-slate-100 text-slate-700 rounded-xl border border-slate-200 shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                        </div>
+                        <p id="bepRevenueSub" class="text-xs text-slate-500 mt-3 pt-2.5 border-t border-slate-100">
+                            מחזור מכירות כספי שבו הרווח הוא 0 ₪
+                        </p>
+                    </div>
+
+                    <!-- כרטיס 3: רווח תפעולי צפוי -->
+                    <div id="profitCardContainer" class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden transition-colors duration-200">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wider text-slate-500">רווח תפעולי צפוי</p>
+                                <h3 id="expectedProfitCard" class="text-2xl sm:text-3xl font-extrabold text-emerald-700 mt-1.5">
+                                    +32,000 ₪
+                                </h3>
+                            </div>
+                            <div id="profitIconBox" class="p-2.5 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-200 shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                </svg>
+                            </div>
+                        </div>
+                        <p id="expectedProfitSub" class="text-xs text-slate-600 mt-3 pt-2.5 border-t border-slate-100 font-medium">
+                            לפי ביקוש מוערך של 900 יחידות
+                        </p>
+                    </div>
+
+                </div>
+
+                <!-- אזור הגרף הדינמי -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 sm:p-6 flex flex-col">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900">ניתוח נקודת איזון: הכנסות מול עלויות</h2>
+                            <p class="text-xs text-slate-500">השוואה ויזואלית בין עקומת הפדיון לעקומת העלות הכוללת לאורך היקפי מכירות שונים</p>
+                        </div>
+                        <!-- מקרא גרף -->
+                        <div class="flex flex-wrap items-center gap-4 text-xs font-medium">
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-3 h-3 rounded-xs bg-blue-800 inline-block"></span>
+                                <span class="text-slate-700">סך הכנסות (TR)</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-3 h-3 rounded-xs bg-slate-500 inline-block"></span>
+                                <span class="text-slate-700">עלות כוללת (TC)</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-3 h-3 rounded-full border-2 border-dashed border-emerald-600 bg-emerald-100 inline-block"></span>
+                                <span class="text-slate-700">ביקוש צפוי בשוק</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- מיכל רספונסיבי לקנבס -->
+                    <div id="canvasWrapper" class="relative w-full h-72 sm:h-80 select-none">
+                        <canvas id="breakEvenChart" class="w-full h-full block rounded-xl"></canvas>
+                        <!-- טולטיפ צף במעבר עכבר/מגע על הגרף -->
+                        <div id="chartTooltip" class="chart-tooltip hidden absolute z-20 bg-slate-900/95 text-white text-xs rounded-xl p-3 shadow-lg border border-slate-700 backdrop-blur-xs min-w-[180px]">
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+        </div>
+
+        <!-- תחתית המסך: תיבת "תובנה כלכלית בזמן אמת" -->
+        <section aria-live="polite" class="mt-6">
+            <div id="insightBox" class="bg-white border-r-4 border-blue-800 rounded-2xl p-5 shadow-sm border-y border-l border-slate-200/90 transition-all duration-200">
+                <div class="flex items-start gap-3.5">
+                    <div id="insightIcon" class="p-2.5 rounded-xl bg-blue-50 text-blue-900 shrink-0 mt-0.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <h3 id="insightTitle" class="text-base font-extrabold text-slate-900">
+                                תובנה כלכלית בזמן אמת
+                            </h3>
+                            <span id="insightBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                מצב רווחי
+                            </span>
+                        </div>
+                        <p id="insightText" class="text-sm sm:text-base text-slate-700 leading-relaxed">
+                            טוען ניתוח כלכלי...
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- פוטר קצר -->
+    <footer class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-xs text-slate-400 border-t border-slate-200/60 mt-4">
+        כלי עזר אינטראקטיבי לסטודנטים בקורסי מבוא לכלכלה, שיווק וניהול עסקי • הנתונים מחושבים בזמן אמת
+    </footer>
+
+    <script>
+        /**
+         * סימולטור תמחור, גמישות ביקוש ונקודת איזון (Break-Even Point)
+         * ארכיטקטורה: ניהול מצב מרכזי (State), חישוב מודל כלכלי ורינדור רספונסיבי של קנבס וכרטיסי KPI.
+         */
+
+        // ערכי ברירת מחדל לאיפוס
+        const DEFAULTS = {
+            price: 150,
+            varCost: 70,
+            fixedCost: 40000
+        };
+
+        // מצב נוכחי של הסימולטור
+        const state = {
+            price: DEFAULTS.price,
+            varCost: DEFAULTS.varCost,
+            fixedCost: DEFAULTS.fixedCost,
+            lastChanged: 'init' // מעקב אחר המחוון האחרון שהשתנה לטובת התובנה הפדגוגית
+        };
+
+        // הפניות לאלמנטים ב-DOM
+        const elements = {
+            priceSlider: document.getElementById('priceSlider'),
+            varCostSlider: document.getElementById('varCostSlider'),
+            fixedCostSlider: document.getElementById('fixedCostSlider'),
+            resetBtn: document.getElementById('resetBtn'),
+
+            priceValue: document.getElementById('priceValue'),
+            varCostValue: document.getElementById('varCostValue'),
+            fixedCostValue: document.getElementById('fixedCostValue'),
+            demandBadge: document.getElementById('demandBadge'),
+            contributionBadge: document.getElementById('contributionBadge'),
+
+            bepUnitsCard: document.getElementById('bepUnitsCard'),
+            bepUnitsSub: document.getElementById('bepUnitsSub'),
+            bepRevenueCard: document.getElementById('bepRevenueCard'),
+            bepRevenueSub: document.getElementById('bepRevenueSub'),
+            profitCardContainer: document.getElementById('profitCardContainer'),
+            expectedProfitCard: document.getElementById('expectedProfitCard'),
+            profitIconBox: document.getElementById('profitIconBox'),
+            expectedProfitSub: document.getElementById('expectedProfitSub'),
+
+            insightBox: document.getElementById('insightBox'),
+            insightIcon: document.getElementById('insightIcon'),
+            insightTitle: document.getElementById('insightTitle'),
+            insightBadge: document.getElementById('insightBadge'),
+            insightText: document.getElementById('insightText'),
+
+            canvasWrapper: document.getElementById('canvasWrapper'),
+            canvas: document.getElementById('breakEvenChart'),
+            tooltip: document.getElementById('chartTooltip')
+        };
+
+        // פונקציית עזר לעיצוב מספרים בעברית
+        function formatNumber(num) {
+            return Math.round(num).toLocaleString('he-IL');
+        }
+
+        function formatCurrency(num) {
+            return `${Math.round(num).toLocaleString('he-IL')} ₪`;
+        }
+
+        /**
+         * חישוב המודל הכלכלי המלא על בסיס הפרמטרים הנוכחיים
+         */
+        function calculateModel() {
+            const P = state.price;
+            const VC = state.varCost;
+            const FC = state.fixedCost;
+
+            // תרומה שולית ליחידה (Contribution Margin per Unit)
+            const unitContribution = P - VC;
+
+            // פונקציית ביקוש ליניארית: ככל שהמחיר עולה, הביקוש יורד
+            // בטווח המחירים 50..300, הביקוש נע בין 1,300 ל-300 יחידות
+            const estimatedDemand = Math.max(0, Math.round(1500 - 4 * P));
+
+            // חישוב נקודת איזון (רק אם התרומה חיובית)
+            let bepUnits = null;
+            let bepRevenue = null;
+            if (unitContribution > 0) {
+                bepUnits = FC / unitContribution;
+                bepRevenue = bepUnits * P;
+            }
+
+            // חישוב תוצאות צפויות לפי הביקוש המוערך בשוק
+            const expectedRevenue = P * estimatedDemand;
+            const expectedTotalCost = FC + (VC * estimatedDemand);
+            const expectedProfit = expectedRevenue - expectedTotalCost;
+
+            return {
+                P,
+                VC,
+                FC,
+                unitContribution,
+                estimatedDemand,
+                bepUnits,
+                bepRevenue,
+                expectedRevenue,
+                expectedTotalCost,
+                expectedProfit
+            };
+        }
+
+        /**
+         * עדכון ממשק המשתמש (כרטיסים, תגיות ותובנה כלכלית)
+         */
+        function updateUI() {
+            const model = calculateModel();
+
+            // 1. עדכון תוויות הסליידרים
+            elements.priceValue.textContent = formatCurrency(model.P);
+            elements.varCostValue.textContent = formatCurrency(model.VC);
+            elements.fixedCostValue.textContent = formatCurrency(model.FC);
+            elements.demandBadge.textContent = `${formatNumber(model.estimatedDemand)} יח'`;
+
+            // עדכון תגית התרומה השולית
+            if (model.unitContribution > 0) {
+                elements.contributionBadge.textContent = `+${formatCurrency(model.unitContribution)}`;
+                elements.contributionBadge.className = 'font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md';
+            } else if (model.unitContribution === 0) {
+                elements.contributionBadge.textContent = `0 ₪`;
+                elements.contributionBadge.className = 'font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md';
+            } else {
+                elements.contributionBadge.textContent = `${formatCurrency(model.unitContribution)} (שלילית!)`;
+                elements.contributionBadge.className = 'font-bold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-md';
+            }
+
+            // 2. עדכון 3 כרטיסי המדדים
+            if (model.bepUnits !== null) {
+                elements.bepUnitsCard.textContent = `${formatNumber(Math.ceil(model.bepUnits))} יח'`;
+                elements.bepUnitsCard.classList.remove('text-red-600');
+                elements.bepUnitsCard.classList.add('text-slate-900');
+                elements.bepUnitsSub.textContent = `תרומה של ${formatCurrency(model.unitContribution)} לכל יחידה`;
+
+                elements.bepRevenueCard.textContent = formatCurrency(model.bepRevenue);
+                elements.bepRevenueCard.classList.remove('text-red-600');
+                elements.bepRevenueCard.classList.add('text-slate-900');
+                elements.bepRevenueSub.textContent = `מחזור מכירות שבו הרווח הוא 0 ₪`;
+            } else {
+                elements.bepUnitsCard.textContent = 'אין נקודת איזון';
+                elements.bepUnitsCard.classList.remove('text-slate-900');
+                elements.bepUnitsCard.classList.add('text-red-600');
+                elements.bepUnitsSub.textContent = 'המחיר אינו מכסה אפילו את העלות המשתנה';
+
+                elements.bepRevenueCard.textContent = 'לא ניתן להגיע';
+                elements.bepRevenueCard.classList.remove('text-slate-900');
+                elements.bepRevenueCard.classList.add('text-red-600');
+                elements.bepRevenueSub.textContent = 'כל יחידה שנמכרת מגדילה את ההפסד';
+            }
+
+            // כרטיס רווח תפעולי צפוי
+            const isProfitable = model.expectedProfit > 0;
+            const isBreakEvenExact = Math.abs(model.expectedProfit) < 1;
+
+            if (isProfitable) {
+                elements.expectedProfitCard.textContent = `+${formatCurrency(model.expectedProfit)}`;
+                elements.expectedProfitCard.className = 'text-2xl sm:text-3xl font-extrabold text-emerald-700 mt-1.5';
+                elements.profitIconBox.className = 'p-2.5 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-200 shrink-0';
+                elements.profitCardContainer.className = 'bg-white rounded-2xl p-5 shadow-sm border border-emerald-200/80 flex flex-col justify-between relative overflow-hidden transition-colors duration-200';
+            } else if (isBreakEvenExact) {
+                elements.expectedProfitCard.textContent = `0 ₪`;
+                elements.expectedProfitCard.className = 'text-2xl sm:text-3xl font-extrabold text-slate-700 mt-1.5';
+                elements.profitIconBox.className = 'p-2.5 bg-slate-100 text-slate-700 rounded-xl border border-slate-200 shrink-0';
+                elements.profitCardContainer.className = 'bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden transition-colors duration-200';
+            } else {
+                elements.expectedProfitCard.textContent = `${formatCurrency(model.expectedProfit)}`;
+                elements.expectedProfitCard.className = 'text-2xl sm:text-3xl font-extrabold text-red-600 mt-1.5';
+                elements.profitIconBox.className = 'p-2.5 bg-red-50 text-red-600 rounded-xl border border-red-200 shrink-0';
+                elements.profitCardContainer.className = 'bg-white rounded-2xl p-5 shadow-sm border border-red-200/80 flex flex-col justify-between relative overflow-hidden transition-colors duration-200';
+            }
+            elements.expectedProfitSub.textContent = `לפי ביקוש מוערך של ${formatNumber(model.estimatedDemand)} יחידות בשוק`;
+
+            // 3. עדכון תיבת "תובנה כלכלית בזמן אמת"
+            updateEconomicInsight(model);
+
+            // 4. ציור הגרף מחדש
+            drawChart(model);
+        }
+
+        /**
+         * יצירת הסבר פדגוגי דינמי בהתאם למצב העסק ולפעולה האחרונה של הסטודנט
+         */
+        function updateEconomicInsight(model) {
+            const { P, VC, FC, unitContribution, estimatedDemand, bepUnits, expectedProfit } = model;
+
+            // מקרה קיצון 1: המחיר נמוך או שווה לעלות המשתנה (התרעה אדומה קריטית)
+            if (P <= VC) {
+                elements.insightBox.className = 'bg-red-50 border-r-4 border-red-600 rounded-2xl p-5 shadow-sm border-y border-l border-red-200 transition-all duration-200';
+                elements.insightIcon.className = 'p-2.5 rounded-xl bg-red-100 text-red-700 shrink-0 mt-0.5';
+                elements.insightIcon.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>`;
+                elements.insightTitle.className = 'text-base font-extrabold text-red-900';
+                elements.insightTitle.textContent = 'התרעה כלכלית קריטית: תמחור הפסדי ליחידה!';
+                elements.insightBadge.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-red-600 text-white';
+                elements.insightBadge.textContent = 'סכנת הפסד תפעולי';
+
+                if (P < VC) {
+                    elements.insightText.innerHTML = `
+                        מחיר המכירה (<strong>${formatCurrency(P)}</strong>) נמוך מהעלות המשתנה ליחידה (<strong>${formatCurrency(VC)}</strong>). 
+                        המשמעות היא שעל <strong>כל יחידה נוספת</strong> שהעסק מוכר, הוא מפסיד עוד <strong>${formatCurrency(VC - P)}</strong> עוד לפני ששילם שקל אחד על ההוצאות הקבועות! 
+                        במצב זה לא קיימת נקודת איזון — הגדלת המכירות רק תעמיק את ההפסד. עליך להעלות מחיר או להוזיל עלויות ייצור.
+                    `;
+                } else {
+                    elements.insightText.innerHTML = `
+                        מחיר המכירה (<strong>${formatCurrency(P)}</strong>) שווה בדיוק לעלות המשתנה (<strong>${formatCurrency(VC)}</strong>), ולכן התרומה השולית היא <strong>0 ₪</strong>. 
+                        מכירת יחידות נוספות אינה תורמת דבר לכיסוי ההוצאות הקבועות (<strong>${formatCurrency(FC)}</strong>), והעסק יישאר בהפסד בגובה ההוצאות הקבועות.
+                    `;
+                }
+                return;
+            }
+
+            // מקרה 2: התרומה חיובית, אך הביקוש בשוק נמוך מנקודת האיזון (העסק בהפסד)
+            if (expectedProfit < 0) {
+                elements.insightBox.className = 'bg-amber-50/70 border-r-4 border-amber-500 rounded-2xl p-5 shadow-sm border-y border-l border-amber-200 transition-all duration-200';
+                elements.insightIcon.className = 'p-2.5 rounded-xl bg-amber-100 text-amber-700 shrink-0 mt-0.5';
+                elements.insightIcon.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>`;
+                elements.insightTitle.className = 'text-base font-extrabold text-amber-950';
+                elements.insightTitle.textContent = 'תובנה כלכלית בזמן אמת: מתחת לנקודת האיזון';
+                elements.insightBadge.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-200 text-amber-900';
+                elements.insightBadge.textContent = 'הפסד תפעולי';
+
+                const missingUnits = Math.ceil(bepUnits) - estimatedDemand;
+                let reasonNote = '';
+                if (P >= 240) {
+                    reasonNote = `שימו לב להשפעת <strong>גמישות הביקוש</strong>: אמנם הרווח ליחידה גבוה (${formatCurrency(unitContribution)}), אך המחיר היקר הבריח לקוחות והוריד את הביקוש ל-${formatNumber(estimatedDemand)} יחידות בלבד.`;
+                } else {
+                    reasonNote = `הביקוש בשוק (${formatNumber(estimatedDemand)} יח') נמוך ב-<strong>${formatNumber(missingUnits)} יחידות</strong> מנקודת האיזון הנדרשת (${formatNumber(Math.ceil(bepUnits))} יח').`;
+                }
+
+                elements.insightText.innerHTML = `
+                    כל יחידה שנמכרת תורמת <strong>${formatCurrency(unitContribution)}</strong> לכיסוי ההוצאות הקבועות, אך היקף המכירות הצפוי אינו מספיק כדי לכסות את מלוא ההוצאות הקבועות (<strong>${formatCurrency(FC)}</strong>), ולכן נוצר הפסד של <strong>${formatCurrency(Math.abs(expectedProfit))}</strong>. ${reasonNote}
+                `;
+                return;
+            }
+
+            // מקרה 3: העסק ברווח תפעולי חיובי
+            elements.insightBox.className = 'bg-white border-r-4 border-blue-800 rounded-2xl p-5 shadow-sm border-y border-l border-slate-200/90 transition-all duration-200';
+            elements.insightIcon.className = 'p-2.5 rounded-xl bg-blue-50 text-blue-900 shrink-0 mt-0.5';
+            elements.insightIcon.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>`;
+            elements.insightTitle.className = 'text-base font-extrabold text-slate-900';
+            elements.insightTitle.textContent = 'תובנה כלכלית בזמן אמת';
+            elements.insightBadge.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+            elements.insightBadge.textContent = 'רווחיות חיובית';
+
+            const marginOfSafetyUnits = estimatedDemand - Math.ceil(bepUnits);
+            let contextDetail = '';
+            if (state.lastChanged === 'price') {
+                contextDetail = `שינוי המחיר ל-<strong>${formatCurrency(P)}</strong> קבע תרומה של <strong>${formatCurrency(unitContribution)}</strong> ליחידה וביקוש שוק של <strong>${formatNumber(estimatedDemand)} יחידות</strong>. `;
+            } else if (state.lastChanged === 'varCost') {
+                contextDetail = `עדכון העלות המשתנה ל-<strong>${formatCurrency(VC)}</strong> שינה את מרווח התרומה ל-<strong>${formatCurrency(unitContribution)}</strong> ליחידה. `;
+            } else if (state.lastChanged === 'fixedCost') {
+                contextDetail = `עדכון ההוצאות הקבועות ל-<strong>${formatCurrency(FC)}</strong> הזיז את רף נקודת האיזון ל-<strong>${formatNumber(Math.ceil(bepUnits))} יחידות</strong>. `;
+            }
+
+            elements.insightText.innerHTML = `
+                ${contextDetail}העסק עובר מהפסד לרווח לאחר מכירת <strong>${formatNumber(Math.ceil(bepUnits))} יחידות</strong> (פדיון של ${formatCurrency(model.bepRevenue)}). 
+                מכיוון שהביקוש המוערך בשוק גבוה ב-<strong>${formatNumber(marginOfSafetyUnits)} יחידות</strong> מעבר לנקודת האיזון ("מרווח ביטחון"), העסק צפוי להניב רווח תפעולי נקי של <strong>${formatCurrency(expectedProfit)}</strong>.
+            `;
+        }
+
+        // משתני עזר לאינטראקציה עם הקנבס
+        let chartMetrics = null;
+        let hoverUnitX = null;
+
+        /**
+         * ציור גרף נקודת האיזון על גבי אלמנט Canvas ברזולוציה גבוהה (Retina-ready)
+         */
+        function drawChart(model) {
+            const canvas = elements.canvas;
+            const wrapper = elements.canvasWrapper;
+            const dpr = window.devicePixelRatio || 1;
+            const rect = wrapper.getBoundingClientRect();
+
+            // התאמת ממדי הקנבס למיכל
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+
+            const width = rect.width;
+            const height = rect.height;
+
+            // שוליים פנימיים לגרף (מותאם לכיתוב בעברית)
+            const pad = {
+                top: 28,
+                right: 24,
+                bottom: 44,
+                left: 68
+            };
+
+            const plotW = width - pad.left - pad.right;
+            const plotH = height - pad.top - pad.bottom;
+
+            // ניקוי רקע
+            ctx.clearRect(0, 0, width, height);
+
+            // קביעת סקאלת ציר X (יחידות) דינמית חכמה
+            const bepX = (model.bepUnits !== null && model.bepUnits < 3500) ? model.bepUnits : 0;
+            const maxUnits = Math.max(1400, Math.ceil(Math.max(model.estimatedDemand * 1.25, bepX * 1.35) / 200) * 200);
+
+            // קביעת סקאלת ציר Y (שקלים)
+            const maxRevAtMaxUnits = model.P * maxUnits;
+            const maxCostAtMaxUnits = model.FC + model.VC * maxUnits;
+            const maxMoney = Math.max(100000, Math.ceil(Math.max(maxRevAtMaxUnits, maxCostAtMaxUnits) * 1.1 / 20000) * 20000);
+
+            // פונקציות המרה מערכים לקואורדינטות מסך (ציר X משמאל לימין כמקובל בגרפים מתמטיים/כלכליים)
+            const toX = (units) => pad.left + (units / maxUnits) * plotW;
+            const toY = (money) => pad.top + plotH - (money / maxMoney) * plotH;
+
+            // שמירת מטריקות לטולטיפ
+            chartMetrics = { pad, plotW, plotH, maxUnits, maxMoney, toX, toY, model };
+
+            // 1. מילוי אזור רווח ואזור הפסד (הצללה עדינה בין העקומות)
+            if (model.bepUnits !== null && model.bepUnits <= maxUnits) {
+                const bx = toX(model.bepUnits);
+                const by = toY(model.bepRevenue);
+
+                // אזור הפסד (משמאל לנקודת האיזון)
+                ctx.beginPath();
+                ctx.moveTo(toX(0), toY(0));
+                ctx.lineTo(toX(0), toY(model.FC));
+                ctx.lineTo(bx, by);
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.08)';
+                ctx.fill();
+
+                // אזור רווח (מימין לנקודת האיזון)
+                ctx.beginPath();
+                ctx.moveTo(bx, by);
+                ctx.lineTo(toX(maxUnits), toY(maxRevAtMaxUnits));
+                ctx.lineTo(toX(maxUnits), toY(maxCostAtMaxUnits));
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(16, 185, 129, 0.11)';
+                ctx.fill();
+            } else if (model.unitContribution <= 0) {
+                // כל השטח הוא אזור הפסד
+                ctx.beginPath();
+                ctx.moveTo(toX(0), toY(0));
+                ctx.lineTo(toX(0), toY(model.FC));
+                ctx.lineTo(toX(maxUnits), toY(maxCostAtMaxUnits));
+                ctx.lineTo(toX(maxUnits), toY(maxRevAtMaxUnits));
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.09)';
+                ctx.fill();
+            }
+
+            // 2. ציור רשת (Gridlines) ותוויות צירים
+            ctx.font = '11px Heebo, sans-serif';
+            ctx.textBaseline = 'middle';
+
+            // קווי רוחב (ציר Y - כסף)
+            const yTicks = 5;
+            for (let i = 0; i <= yTicks; i++) {
+                const val = (maxMoney / yTicks) * i;
+                const y = toY(val);
+
+                ctx.beginPath();
+                ctx.moveTo(pad.left, y);
+                ctx.lineTo(pad.left + plotW, y);
+                ctx.strokeStyle = i === 0 ? '#94a3b8' : '#e2e8f0';
+                ctx.lineWidth = i === 0 ? 1.5 : 1;
+                ctx.stroke();
+
+                // תווית ציר Y
+                ctx.fillStyle = '#64748b';
+                ctx.textAlign = 'right';
+                const labelText = val === 0 ? '0 ₪' : `${Math.round(val / 1000)}k ₪`;
+                ctx.fillText(labelText, pad.left - 8, y);
+            }
+
+            // קווי אורך (ציר X - יחידות)
+            const xTicks = 5;
+            ctx.textBaseline = 'top';
+            for (let i = 0; i <= xTicks; i++) {
+                const uVal = (maxUnits / xTicks) * i;
+                const x = toX(uVal);
+
+                ctx.beginPath();
+                ctx.moveTo(x, pad.top);
+                ctx.lineTo(x, pad.top + plotH);
+                ctx.strokeStyle = i === 0 ? '#94a3b8' : '#f1f5f9';
+                ctx.lineWidth = i === 0 ? 1.5 : 1;
+                ctx.stroke();
+
+                // תווית ציר X
+                ctx.fillStyle = '#64748b';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${Math.round(uVal)}`, x, pad.top + plotH + 8);
+            }
+
+            // כותרת ציר X
+            ctx.fillStyle = '#475569';
+            ctx.font = 'bold 11px Heebo, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('כמות יחידות נמכרות (Q)', pad.left + plotW / 2, height - 14);
+
+            // 3. קו הוצאות קבועות (FC) מקווקו עדין
+            const fcY = toY(model.FC);
+            ctx.save();
+            ctx.beginPath();
+            ctx.setLineDash([4, 4]);
+            ctx.moveTo(pad.left, fcY);
+            ctx.lineTo(pad.left + plotW, fcY);
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.fillStyle = '#64748b';
+            ctx.font = '10px Heebo, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText('הוצאות קבועות (FC)', pad.left + 6, fcY - 12);
+
+            // 4. עקומת עלות כוללת (Total Cost: TC = FC + VC * Q)
+            ctx.beginPath();
+            ctx.moveTo(toX(0), toY(model.FC));
+            ctx.lineTo(toX(maxUnits), toY(maxCostAtMaxUnits));
+            ctx.strokeStyle = '#475569'; // אפור כהה
+            ctx.lineWidth = 2.8;
+            ctx.stroke();
+
+            // 5. עקומת סך הכנסות / פדיון (Total Revenue: TR = P * Q)
+            ctx.beginPath();
+            ctx.moveTo(toX(0), toY(0));
+            ctx.lineTo(toX(maxUnits), toY(maxRevAtMaxUnits));
+            ctx.strokeStyle = '#1e3a8a'; // כחול כהה
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // 6. קו אנכי של הביקוש הצפוי בשוק (Estimated Demand)
+            if (model.estimatedDemand >= 0 && model.estimatedDemand <= maxUnits) {
+                const demX = toX(model.estimatedDemand);
+                const demRevY = toY(model.expectedRevenue);
+                const demCostY = toY(model.expectedTotalCost);
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.setLineDash([5, 4]);
+                ctx.moveTo(demX, pad.top);
+                ctx.lineTo(demX, pad.top + plotH);
+                ctx.strokeStyle = model.expectedProfit >= 0 ? '#059669' : '#d97706';
+                ctx.lineWidth = 1.8;
+                ctx.stroke();
+                ctx.restore();
+
+                // נקודות על עקומות ההכנסה והעלות בביקוש הצפוי
+                ctx.beginPath();
+                ctx.arc(demX, demRevY, 4.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#1e3a8a';
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(demX, demCostY, 4.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#475569';
+                ctx.fill();
+
+                // תווית ביקוש צפוי בחלק העליון
+                const badgeText = `ביקוש שוק: ${formatNumber(model.estimatedDemand)} יח'`;
+                ctx.font = 'bold 11px Heebo, sans-serif';
+                const textW = ctx.measureText(badgeText).width;
+                const badgeX = Math.min(Math.max(demX - textW / 2 - 6, pad.left + 4), pad.left + plotW - textW - 16);
+
+                ctx.fillStyle = model.expectedProfit >= 0 ? '#ecfdf5' : '#fffbeb';
+                ctx.strokeStyle = model.expectedProfit >= 0 ? '#10b981' : '#f59e0b';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.roundRect(badgeX, 4, textW + 12, 20, 6);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = model.expectedProfit >= 0 ? '#065f46' : '#92400e';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(badgeText, badgeX + (textW + 12) / 2, 14);
+            }
+
+            // 7. הדגשת נקודת האיזון (Break-Even Point) אם קיימת בטווח הגרף
+            if (model.bepUnits !== null && model.bepUnits <= maxUnits) {
+                const bx = toX(model.bepUnits);
+                const by = toY(model.bepRevenue);
+
+                // הילה סביב נקודת האיזון
+                ctx.beginPath();
+                ctx.arc(bx, by, 10, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(30, 58, 138, 0.18)';
+                ctx.fill();
+
+                // הנקודה המרכזית
+                ctx.beginPath();
+                ctx.arc(bx, by, 5.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#1e3a8a';
+                ctx.stroke();
+
+                // תגית טקסט ליד נקודת האיזון
+                const bepLabel = `נקודת איזון (${formatNumber(Math.ceil(model.bepUnits))} יח')`;
+                ctx.font = 'bold 11px Heebo, sans-serif';
+                const lblW = ctx.measureText(bepLabel).width;
+                let lblX = bx + 10;
+                let lblY = by + 14;
+                if (lblX + lblW + 12 > pad.left + plotW) {
+                    lblX = bx - lblW - 18;
+                }
+                if (lblY + 22 > pad.top + plotH) {
+                    lblY = by - 28;
+                }
+
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.roundRect(lblX, lblY, lblW + 12, 21, 6);
+                ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(bepLabel, lblX + 6, lblY + 10.5);
+            }
+
+            // 8. קו סמן אינטראקטיבי במעבר עכבר (Hover)
+            if (hoverUnitX !== null && hoverUnitX >= 0 && hoverUnitX <= maxUnits) {
+                const hx = toX(hoverUnitX);
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(hx, pad.top);
+                ctx.lineTo(hx, pad.top + plotH);
+                ctx.strokeStyle = 'rgba(15, 23, 42, 0.35)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        /**
+         * ניהול אינטראקציית מעבר עכבר / מגע על הגרף להצגת פירוט מספרי מדויק
+         */
+        function handleChartPointer(clientX, clientY) {
+            if (!chartMetrics) return;
+            const rect = elements.canvas.getBoundingClientRect();
+            const relX = clientX - rect.left;
+            const relY = clientY - rect.top;
+
+            const { pad, plotW, plotH, maxUnits, model } = chartMetrics;
+
+            if (relX < pad.left || relX > pad.left + plotW || relY < pad.top || relY > pad.top + plotH) {
+                hideTooltip();
+                return;
+            }
+
+            const ratio = (relX - pad.left) / plotW;
+            const units = Math.round(ratio * maxUnits);
+            hoverUnitX = units;
+
+            const rev = model.P * units;
+            const cost = model.FC + model.VC * units;
+            const profit = rev - cost;
+
+            const profitColor = profit >= 0 ? 'text-emerald-400' : 'text-red-400';
+            const profitSign = profit > 0 ? '+' : '';
+
+            elements.tooltip.innerHTML = `
+                <div class="font-bold text-slate-200 border-b border-slate-700 pb-1 mb-1.5 flex justify-between">
+                    <span>היקף מכירות:</span>
+                    <span>${formatNumber(units)} יחידות</span>
+                </div>
+                <div class="space-y-1">
+                    <div class="flex justify-between gap-4">
+                        <span class="text-blue-300">סך הכנסות:</span>
+                        <span class="font-semibold">${formatCurrency(rev)}</span>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <span class="text-slate-300">עלות כוללת:</span>
+                        <span class="font-semibold">${formatCurrency(cost)}</span>
+                    </div>
+                    <div class="flex justify-between gap-4 pt-1 border-t border-slate-700/80">
+                        <span class="text-slate-200">רווח / הפסד:</span>
+                        <span class="font-bold ${profitColor}">${profitSign}${formatCurrency(profit)}</span>
+                    </div>
+                </div>
+            `;
+
+            elements.tooltip.classList.remove('hidden');
+
+            // מיקום הטולטיפ כך שלא יחרוג מגבולות המסך
+            const tooltipW = elements.tooltip.offsetWidth || 190;
+            const tooltipH = elements.tooltip.offsetHeight || 105;
+            let leftPos = relX + 14;
+            if (leftPos + tooltipW > rect.width - 8) {
+                leftPos = relX - tooltipW - 14;
+            }
+            let topPos = Math.max(8, Math.min(relY - tooltipH / 2, rect.height - tooltipH - 8));
+
+            elements.tooltip.style.left = `${leftPos}px`;
+            elements.tooltip.style.top = `${topPos}px`;
+
+            drawChart(model);
+        }
+
+        function hideTooltip() {
+            if (hoverUnitX !== null) {
+                hoverUnitX = null;
+                elements.tooltip.classList.add('hidden');
+                drawChart(calculateModel());
+            }
+        }
+
+        // האזנה לאירועי הסליידרים
+        elements.priceSlider.addEventListener('input', (e) => {
+            state.price = Number(e.target.value);
+            state.lastChanged = 'price';
+            updateUI();
+        });
+
+        elements.varCostSlider.addEventListener('input', (e) => {
+            state.varCost = Number(e.target.value);
+            state.lastChanged = 'varCost';
+            updateUI();
+        });
+
+        elements.fixedCostSlider.addEventListener('input', (e) => {
+            state.fixedCost = Number(e.target.value);
+            state.lastChanged = 'fixedCost';
+            updateUI();
+        });
+
+        // כפתור איפוס נתונים
+        elements.resetBtn.addEventListener('click', () => {
+            state.price = DEFAULTS.price;
+            state.varCost = DEFAULTS.varCost;
+            state.fixedCost = DEFAULTS.fixedCost;
+            state.lastChanged = 'init';
+
+            elements.priceSlider.value = DEFAULTS.price;
+            elements.varCostSlider.value = DEFAULTS.varCost;
+            elements.fixedCostSlider.value = DEFAULTS.fixedCost;
+
+            updateUI();
+        });
+
+        // אירועי עכבר ומגע על הקנבס
+        elements.canvas.addEventListener('mousemove', (e) => handleChartPointer(e.clientX, e.clientY));
+        elements.canvas.addEventListener('mouseleave', hideTooltip);
+        elements.canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                handleChartPointer(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: true });
+        elements.canvas.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) {
+                handleChartPointer(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: true });
+        elements.canvas.addEventListener('touchend', hideTooltip);
+
+        // עדכון הגרף בעת שינוי גודל חלון
+        window.addEventListener('resize', () => {
+            drawChart(calculateModel());
+        });
+
+        // אתחול ראשוני בטעינת העמוד
+        window.addEventListener('DOMContentLoaded', () => {
+            updateUI();
+        });
+    </script>
+</body>
+</html>
